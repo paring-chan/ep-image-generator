@@ -1,8 +1,8 @@
 import express from 'express'
-import { themes } from './constants'
+import { assetsPath, themes } from './constants'
 import * as fs from 'fs'
 import * as path from 'path'
-import { Canvas } from 'canvas'
+import { Canvas, registerFont } from 'canvas'
 
 const config = require('../config.json')
 
