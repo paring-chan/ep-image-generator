@@ -12,5 +12,10 @@
   },
   "dependencies": {
     "express": "^4.17.1"
+  },
+  "scripts": {
+    "dev": "concurrently \"tsc -w\" \"nodemon dist\"",
+    "start": "node dist",
+    "build": "tsc"
   }
 }
