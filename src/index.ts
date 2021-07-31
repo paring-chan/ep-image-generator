@@ -2,25 +2,32 @@ import express from 'express'
 import { themes } from './constants'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as pug from 'pug'
-import puppeteer from 'puppeteer'
+import { Canvas } from 'canvas'
+
 const config = require('../config.json')
 
-fs.readdirSync(path.join(process.cwd(), 'themes')).forEach((x) => {
-    const filePath = path.join(process.cwd(), 'themes', x)
-    const name = path.parse(x).name
-    themes.push({
-        name,
-        render: (locals) => pug.renderFile(filePath, locals || {}),
-    })
-    console.log(`테마 ${name}가 로딩되었어요!`)
-})
+Promise.all(
+    fs.readdirSync(path.join(__dirname, 'themes')).map(async (x) => {
+        const module = require(path.join(__dirname, 'themes', x))
 
-console.log('chromium 실행중...')
+        const name = path.parse(x).name
 
-puppeteer.launch({
-    headless: false
-}).then((browser) => {
+        if (!module.width || !module.height || !module.render)
+            return console.log(`테마 ${name} 로딩 실패..`)
+
+        if (module.init) {
+            await module.init()
+        }
+
+        themes.push({
+            name,
+            render: module.render,
+            width: module.width,
+            height: module.height,
+        })
+        console.log(`테마 ${name}가 로딩되었어요!`)
+    }),
+).then(() => {
     const app = express()
 
     app.get('/:theme', async (req, res) => {
@@ -31,16 +38,14 @@ puppeteer.launch({
 
         if (!theme) return res.json({ message: 'invalid theme' })
 
-        const data = theme.render(query)
+        const canvas = new Canvas(theme.width, theme.height)
 
-        const page = await browser.newPage()
+        const data = theme.render(canvas, query)
 
-        await page.setContent(data)
+        if (data) return res.json(data)
 
-        const root = (await page.$('#root'))!
         res.setHeader('Content-Type', 'image/png')
-        res.end(await root.screenshot())
-        await page.close()
+        res.send(canvas.toBuffer())
     })
 
     app.listen(config.port, () => console.log('와아 서버 시작!'))

@@ -1,6 +1,10 @@
-import pug from 'pug'
+import { Canvas } from 'canvas'
 
 export type Theme = {
     name: string
-    render: pug.compileTemplate
+    render: RenderFunction
+    width: number
+    height: number
 }
+
+export type RenderFunction = (canvas: Canvas, data: any) => void|{error: string}
