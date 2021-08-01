@@ -2,6 +2,7 @@ import type { RenderFunction } from '../types'
 import { loadImage, registerFont } from 'canvas'
 import path from 'path'
 import { assetsPath, themeAssetsPath } from '../constants'
+import { josa } from 'josa'
 
 let images: any
 
@@ -14,7 +15,9 @@ export const render: RenderFunction = (canvas, data) => {
 
     let image
 
-    switch (Number(data.rank)) {
+    const rarity = Number(data.rarity)
+
+    switch (rarity) {
         case 0:
             image = images.rank0
             break
@@ -34,7 +37,7 @@ export const render: RenderFunction = (canvas, data) => {
             image = images.rank5
             break
         default:
-            return { error: 'Unknown rank' }
+            return { error: 'Unknown rarity' }
     }
 
     const ctx = canvas.getContext('2d')
@@ -44,17 +47,44 @@ export const render: RenderFunction = (canvas, data) => {
     ctx.font = '24px "Noto Sans KR Bold"'
     ctx.fillStyle = '#fff'
 
-    switch (Number(data.rank)) {
+    switch (rarity) {
         case 0:
-            ctx.fillText(`${data.name}을 낚아 버렸어...`, 71, 31)
+            ctx.fillText(josa(`${data.name}#{을} 낚아 버렸어...`), 71, 7 + 28)
+            ctx.fillStyle = '#000'
+            ctx.font = '20px "Noto Sans KR Bold"'
+            ctx.fillText(data.profit + '$', 80, 59 + 24)
             break
         case 1:
-            ctx.fillText(`${data.name}이(가) 낚였다!`, 71, 31)
+            ctx.fillStyle = '#fff'
+            ctx.fillText(josa(`${data.name}#{이} 낚였다!`), 71, 7 + 28)
+            break
+        case 2:
+            ctx.fillStyle = '#fff'
+            ctx.fillText(josa(`와! ${data.name}#{을} 낚았다!!!`), 71, 7 + 28)
+            break
+        case 3:
+            ctx.fillStyle = '#000'
+            ctx.fillText(
+                josa(`월척이야! ${data.name}#{을} 낚다니!!!`),
+                71,
+                7 + 28,
+            )
+            break
+        case 4:
+            ctx.fillStyle = '#000'
+            ctx.fillText(josa(`이건... ${data.name}#{이?}잖아?!`), 71, 7 + 28)
+            break
+        case 5:
+            ctx.fillText(
+                josa(`${data.name}#{이?}라고?!?! 가능한 거야???`),
+                71,
+                7 + 28,
+            )
             break
     }
     if (data.owner) {
         ctx.font = '8px "Noto Sans KR Bold"'
-        ctx.fillText('낚시터 주인', 72, 38 + 8)
+        ctx.fillText('낚시터 주인', 72, 38 + 12)
     }
     ctx.font = '20px "Noto Sans KR Bold"'
     ctx.fillStyle = '#000'
@@ -70,6 +100,18 @@ export const render: RenderFunction = (canvas, data) => {
     ctx.font = '8px "Noto Sans KR Bold"'
     ctx.fillText(`${data.time}시에 '${data.roomname}'에서`, 290, 160 + 8)
     ctx.fillText(`『${data.username}』`, 290, 170 + 8)
+    if (rarity !== 0) {
+        ctx.font = '20px "Noto Sans KR Bold"'
+        ctx.fillText(data.cost + '$', 80, 59 + 24)
+        ctx.font = '16px "Noto Sans KR Bold"'
+        ctx.fillStyle = '#320000'
+        ctx.fillText(`${data.fees}$ (${data.fees_p}%)`, 72, 85 + 18)
+        ctx.fillStyle = '#003200'
+        ctx.fillText(`${data.bonus}$ (${data.bonus_p}%)`, 72, 105 + 16)
+        ctx.font = '24px "Noto Sans KR Bold"'
+        ctx.fillStyle = '#000'
+        ctx.fillText(data.profit + '$', 85, 145 + 28)
+    }
 }
 
 export const init = async () => {

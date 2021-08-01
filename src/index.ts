@@ -2,7 +2,10 @@ import express from 'express'
 import { assetsPath, themes } from './constants'
 import * as fs from 'fs'
 import * as path from 'path'
-import { Canvas, registerFont } from 'canvas'
+import { Canvas } from 'canvas'
+
+process.on('uncaughtException', console.error)
+process.on('unhandledRejection', console.error)
 
 const config = require('../config.json')
 
