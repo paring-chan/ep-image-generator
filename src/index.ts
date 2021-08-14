@@ -7,6 +7,7 @@ import { fabric } from 'fabric'
 import { Text } from 'fabric/fabric-impl'
 import { josa } from 'josa'
 import { registerFont } from 'canvas'
+import jwt from 'jsonwebtoken'
 
 registerFont(path.join(assetsPath, 'NotoSansKR-Bold.otf'), {
     family: 'Noto Sans KR Bold',
@@ -40,8 +41,14 @@ Promise.all(
 ).then(() => {
     const app = express()
 
-    app.get('/fish/:theme', async (req, res) => {
-        const query = req.query
+    app.get('/fish/:theme/:token', async (req, res) => {
+        let query: any
+        try {
+            query = jwt.verify(req.params.token, config.token)
+        } catch (e) {
+            return res.json({ error: 'Invalid token' })
+        }
+        // const query = req.query
         const { theme: themeName } = req.params
 
         const theme = themes.find((x) => x.name === themeName)
