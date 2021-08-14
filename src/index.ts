@@ -1,39 +1,46 @@
 import express from 'express'
 import { assetsPath, themes } from './constants'
 import * as fs from 'fs'
+import * as pfs from 'fs/promises'
 import * as path from 'path'
-import { Canvas } from 'canvas'
+import { fabric } from 'fabric'
+import { Text } from 'fabric/fabric-impl'
+import { josa } from 'josa'
+import { registerFont } from 'canvas'
+
+registerFont(path.join(assetsPath, 'NotoSansKR-Bold.otf'), {
+    family: 'Noto Sans KR Bold',
+})
 
 process.on('uncaughtException', console.error)
 process.on('unhandledRejection', console.error)
 
 const config = require('../config.json')
 
+const themesDir = path.join(__dirname, '../skins')
+
+const urlRegex = /^data:.+\/(.+);base64,(.*)$/
+
 Promise.all(
-    fs.readdirSync(path.join(__dirname, 'themes')).map(async (x) => {
-        const module = require(path.join(__dirname, 'themes', x))
-
-        const name = path.parse(x).name
-
-        if (!module.width || !module.height || !module.render)
-            return console.log(`테마 ${name} 로딩 실패..`)
-
-        if (module.init) {
-            await module.init()
+    fs.readdirSync(themesDir).map(async (x) => {
+        const rarities = await pfs.readdir(path.join(themesDir, x))
+        let res = []
+        for (const rarity of rarities) {
+            const module = require(path.join(themesDir, x, rarity))
+            res.push({
+                rarity: path.basename(rarity).split('.').shift(),
+                data: module,
+            })
         }
-
         themes.push({
-            name,
-            render: module.render,
-            width: module.width,
-            height: module.height,
+            name: x,
+            rarities: res,
         })
-        console.log(`테마 ${name}가 로딩되었어요!`)
     }),
 ).then(() => {
     const app = express()
 
-    app.get('/:theme', async (req, res) => {
+    app.get('/fish/:theme', async (req, res) => {
         const query = req.query
         const { theme: themeName } = req.params
 
@@ -41,14 +48,33 @@ Promise.all(
 
         if (!theme) return res.json({ message: 'invalid theme' })
 
-        const canvas = new Canvas(theme.width, theme.height)
+        const rarity = theme.rarities.find(
+            (x: any) => x.rarity === query.rarity,
+        )
 
-        const data = theme.render(canvas, query)
+        if (!rarity) return res.json({ message: 'Unknown rarity.' })
 
-        if (data) return res.json(data)
+        const canvas = new fabric.StaticCanvas(null, {
+            width: rarity.data.width,
+            height: rarity.data.height,
+        })
 
-        res.setHeader('Content-Type', 'image/png')
-        res.send(canvas.toBuffer())
+        canvas.loadFromJSON(rarity.data.canvasData, () => {
+            canvas.getObjects('text').forEach((value) => {
+                const text = value as Text
+                for (const [k, v] of Object.entries(query)) {
+                    text.text = text.text!.split(`{${k}}`).join(v as string)
+                }
+                text.text = josa(text.text!)
+            })
+            canvas.renderAll()
+            res.setHeader('Content-Type', 'image/png')
+            const url = canvas.toDataURL()
+            const matches = url.match(urlRegex)!
+            const data = matches[2]
+            const buffer = Buffer.from(data, 'base64')
+            res.send(buffer)
+        })
     })
 
     app.listen(config.port, () => console.log('와아 서버 시작!'))
